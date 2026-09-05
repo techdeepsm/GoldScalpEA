@@ -1,8 +1,12 @@
 //+------------------------------------------------------------------+
 //| CSVLogger.mqh                                                       |
 //| Every export contains enough columns to reproduce and re-analyze    |
-//| the result outside MT5 (spec #44). Files are written under the      |
-//| terminal's MQL5/Files folder (FileOpen without FILE_COMMON).        |
+//| the result outside MT5 (spec #44). Written with FILE_COMMON so the  |
+//| files land in one predictable shared folder                        |
+//| (<Windows user>\AppData\Roaming\MetaQuotes\Terminal\Common\Files\)  |
+//| regardless of whether this runs in the Strategy Tester (which       |
+//| otherwise sandboxes file I/O per test agent), a live/demo chart, or |
+//| which terminal instance - instead of a per-agent Tester subfolder.  |
 //+------------------------------------------------------------------+
 #ifndef __GSEA_CSVLOGGER_MQH__
 #define __GSEA_CSVLOGGER_MQH__
@@ -16,7 +20,7 @@ string B(const bool v) { return v? "1":"0"; }
 
 bool CSV_WriteOccurrences(const string filename,const ScenarioOccurrence &occs[],const int count)
   {
-   int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI,',');
+   int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,',');
    if(h==INVALID_HANDLE) return false;
    FileWrite(h,"occurrence_id","scenario_id","detect_time","entry_time","direction","entry_price","sl_price",
              "tp_0_5R","tp_1R","tp_1_5R","tp_2R","tp_2_5R","tp_3R","tp_4R","r_distance",
@@ -58,7 +62,7 @@ bool CSV_WriteStatsRow(const int h,const ScenarioStats &s)
 
 bool CSV_WriteSummary(const string filename,const ScenarioStats &stats[],const int count)
   {
-   int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI,',');
+   int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,',');
    if(h==INVALID_HANDLE) return false;
    FileWrite(h,"scenario_id","dataset","occurrences","wins","losses","win_rate_pct",
              "p_0_5R_pct","p_1R_pct","p_1_5R_pct","p_2R_pct","p_2_5R_pct","p_3R_pct","p_4R_pct",
@@ -71,7 +75,7 @@ bool CSV_WriteSummary(const string filename,const ScenarioStats &stats[],const i
 
 bool CSV_WriteProbability(const string filename,const ScenarioStats &stats[],const int count)
   {
-   int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI,',');
+   int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,',');
    if(h==INVALID_HANDLE) return false;
    FileWrite(h,"scenario_id","dataset","r_multiple","sample","probability_pct","ci_low_pct","ci_high_pct");
    for(int i=0;i<count;i++)
@@ -85,7 +89,7 @@ bool CSV_WriteProbability(const string filename,const ScenarioStats &stats[],con
 
 bool CSV_WriteConfluence(const string filename,const ConfluenceComparison &rows[],const int count)
   {
-   int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI,',');
+   int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,',');
    if(h==INVALID_HANDLE) return false;
    FileWrite(h,"parent_id","child_id","parent_sample","child_sample","parent_p1R_pct","child_p1R_pct",
              "parent_p2R_pct","child_p2R_pct","parent_expectancy_r","child_expectancy_r",
@@ -110,7 +114,7 @@ bool CSV_WriteValidation(const string filename,const string &scenarioIds[],const
                           const ScenarioStats &trainStats[],const ScenarioStats &validStats[],
                           const ScenarioStats &oosStats[],const double &walkForwardPassRates[],const int count)
   {
-   int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI,',');
+   int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,',');
    if(h==INVALID_HANDLE) return false;
    FileWrite(h,"scenario_id","status","train_sample","train_expectancy_r","valid_sample","valid_expectancy_r",
              "oos_sample","oos_expectancy_r","walk_forward_pass_rate_pct");
@@ -126,7 +130,7 @@ bool CSV_WriteValidation(const string filename,const string &scenarioIds[],const
 
 bool CSV_WriteTradeLog(const string filename,const ExecutedTrade &trades[],const int count)
   {
-   int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI,',');
+   int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,',');
    if(h==INVALID_HANDLE) return false;
    FileWrite(h,"ticket","scenario_id","open_time","close_time","direction","open_price","close_price",
              "sl_price","tp_price","lots","profit","r_multiple");

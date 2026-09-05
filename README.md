@@ -63,10 +63,26 @@ R-multiples (0.5R-4R) per occurrence. From there:
 5. `RankingEngine` scores every scenario on sample size, expectancy, P(2R), profit factor,
    drawdown, and walk-forward stability, minus an explicit complexity penalty - every component of
    the score is stored on the result, not hidden behind one opaque number.
-6. Six CSVs are exported to `MQL5/Files/`: `..._scenario_occurrences.csv`, `..._scenario_summary.csv`,
+6. Six CSVs are exported to the shared Common files folder (`FILE_COMMON` - see "Finding the CSV
+   exports" below), not the per-terminal `MQL5/Files/`: `..._scenario_occurrences.csv`, `..._scenario_summary.csv`,
    `..._scenario_probability.csv`, `..._scenario_confluence.csv`, `..._scenario_validation.csv`
    (plus `trade_log.csv` support in `CSVLogger.mqh`, populated once trades exist in live mode).
 7. A discovery report prints to the Experts log: totals by status and the top-ranked scenarios.
+
+### Finding the CSV exports
+
+The Strategy Tester runs each test in an isolated per-agent sandbox, so plain `FileOpen()` writes
+land somewhere like `...\Tester\<hash>\Agent-127.0.0.1-3000\MQL5\Files\` - a different, hard-to-find
+folder on every run. `CSVLogger.mqh` uses `FILE_COMMON` specifically to avoid that: every export
+always lands in one fixed, shared location regardless of Tester vs. live/demo chart:
+
+- Windows: `%APPDATA%\MetaQuotes\Terminal\Common\Files\`
+  (typically `C:\Users\<you>\AppData\Roaming\MetaQuotes\Terminal\Common\Files\`)
+- From MetaEditor/MT5: File -> Open Data Folder takes you to the *per-terminal* folder, not this
+  one - go up two levels from there to `MetaQuotes\`, then into `Terminal\Common\Files\`.
+
+Filenames are `<InpFilePrefix>scenario_occurrences.csv` etc., where `InpFilePrefix` defaults to
+`GSEA_`.
 
 **Live mode** (`InpMode = MODE_LIVE`) runs the exact same pipeline once at startup (and again every
 `InpLiveResearchRefreshDays`) to build a validated scenario library with real statistics, then
@@ -142,7 +158,8 @@ input/config wiring) rather than in the smaller, more carefully hand-checked eng
 
 Suggested test order once it compiles:
 1. Strategy Tester, visual mode, `MODE_RESEARCH`, a short date range first (a few months) to
-   confirm the Experts log prints a discovery report and `MQL5/Files/` gets the five CSVs.
+   confirm the Experts log prints a discovery report and the Common files folder gets the CSVs
+   (see "Finding the CSV exports" below).
 2. Widen the date range once that works, and inspect `..._scenario_summary.csv` for scenarios
    whose sample size clears `InpMinSampleSize` - their P(R)/expectancy numbers are the actual
    backtested statistics for this build's assumptions (spread, ambiguity rule, etc.), not
