@@ -89,12 +89,16 @@ input double InpMinWalkForwardPassRate      = 0.50;
 input int    InpWalkForwardTrainMonths      = 12;
 input int    InpWalkForwardTestMonths       = 3;
 
+// Defaults below are tuned to an account whose XAUUSD history begins 2025.01.02 (confirmed from
+// a live Journal log - "history begins from 2025.01.02"). If your broker/tester has deeper
+// history, push InpTrainStart back and rebalance the windows accordingly - more TRAIN history is
+// better as long as InpValidStart/InpOOSStart still land before "now" in your test range.
 input group "===== Dataset Ranges (spec #30 - never let OOS feed back into scenario construction) ====="
-input string InpTrainStart = "2021.01.01";
-input string InpTrainEnd   = "2024.01.01";
-input string InpValidStart = "2024.01.01";
-input string InpValidEnd   = "2025.01.01";
-input string InpOOSStart   = "2025.01.01";
+input string InpTrainStart = "2025.01.02";
+input string InpTrainEnd   = "2025.09.01";
+input string InpValidStart = "2025.09.01";
+input string InpValidEnd   = "2026.01.01";
+input string InpOOSStart   = "2026.01.01";
 input string InpOOSEnd     = "2026.12.31";
 
 input group "===== Execution Cost Simulation (Research) ====="
