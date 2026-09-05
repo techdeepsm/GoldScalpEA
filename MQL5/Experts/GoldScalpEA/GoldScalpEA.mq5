@@ -108,7 +108,7 @@ input double InpLiveMinProbAtTarget    = 0.45;
 input double InpLiveMaxDrawdownR       = 15.0;
 input double InpLiveMaxSpreadPoints    = 400;
 input bool   InpLiveAllowDegraded      = false;
-input int    InpLiveResearchRefreshDays= 7;
+input int    InpLiveResearchRefreshDays= 30;   // full pipeline rerun cadence - expensive, keep infrequent (0 = never)
 input int    InpMinLiveSampleForDecay  = 20;   // spec #37 - never judge decay on a handful of trades
 
 input group "===== Risk Management ====="
@@ -278,6 +278,16 @@ void RunDetectionPass()
 
    int n=CopyRates(sym,InpTF_Confirm,overallStart,overallEnd,g_confirmBars);
    if(n<=0){ Print("GoldScalpEA: no confirmation-TF history available for ",sym); return; }
+
+   // Diagnostic: if the terminal's actual history is shallower than the requested range, say so
+   // loudly - this is the single most common reason every scenario ends up INSUFFICIENT_DATA.
+   datetime gotFirst=g_confirmBars[0].time, gotLast=g_confirmBars[n-1].time;
+   if(gotFirst>overallStart+PeriodSeconds(InpTF_Confirm)*10)
+      PrintFormat("GoldScalpEA: WARNING - requested history from %s but %s %s data actually begins %s. "
+                  "TRAIN/VALIDATION windows before that date will get ZERO occurrences and every scenario "
+                  "will stay INSUFFICIENT_DATA. Set InpTrainStart/InpValidStart/InpOOSStart to fit the "
+                  "history this account actually has.",
+                  TimeToString(overallStart,TIME_DATE),sym,EnumToString(InpTF_Confirm),TimeToString(gotFirst,TIME_DATE));
 
    g_stateMachine.Init();
    int periodSec=PeriodSeconds(InpTF_Confirm);
@@ -590,6 +600,11 @@ void PrintDiscoveryReport()
          default: candidate++; break;
         }
      }
+   if(insufficient==cnt && cnt>0)
+      Print("GoldScalpEA: WARNING - every scenario is INSUFFICIENT_DATA, so live mode has nothing ",
+            "VALIDATED to trade and will place zero orders. Check the warning above about actual vs ",
+            "requested history range, and/or lower InpMinSampleSize if this account genuinely has ",
+            "limited history, and/or set InpTrainStart/InpValidStart/InpOOSStart to fit inside it.");
    Print("===== GoldScalpEA Scenario Discovery Report =====");
    PrintFormat("Total scenarios: %d  Rejected: %d  Insufficient data: %d  Promising: %d  Validating: %d  Validated: %d",
                cnt,rejected,insufficient,promising,validating,validated);
