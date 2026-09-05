@@ -43,19 +43,15 @@ double NormalizeSample(const int n,const int cap)
 
 double Clamp01(const double v) { return MathMax(0.0,MathMin(1.0,v)); }
 
-// targetLevelIndex should match whatever R level live execution is actually configured to trade
-// (InpLiveTargetLevelIndex) - ranking then reflects the scenario as it would really be traded,
-// not an unrelated "run to the highest level reached" number.
-void RankScenario(const ScenarioDef &def,const ScenarioStats &stats,const int targetLevelIndex,
-                   const double walkForwardPassRate,const RankingWeights &w,RankingResult &out)
+void RankScenario(const ScenarioDef &def,const ScenarioStats &stats,const double walkForwardPassRate,
+                   const RankingWeights &w,RankingResult &out)
   {
    ZeroMemory(out);
-   int lvl = (targetLevelIndex>=0 && targetLevelIndex<GSEA_R_LEVELS)? targetLevelIndex : GSEA_P2R_INDEX;
    out.scenarioId=def.id;
    out.sampleScore      = NormalizeSample(stats.occurrences,w.sampleCap);
-   out.expectancyScore  = (w.expectancyCap>0.0)? Clamp01(stats.expectancyAtLevel[lvl]/w.expectancyCap) : 0.0;
-   out.probScore        = Clamp01(stats.probR[lvl]);
-   out.pfScore          = (w.pfRangeAboveOne>0.0)? Clamp01((stats.profitFactorAtLevel[lvl]-1.0)/w.pfRangeAboveOne) : 0.0;
+   out.expectancyScore  = (w.expectancyCap>0.0)? Clamp01(stats.expectancyR/w.expectancyCap) : 0.0;
+   out.probScore        = Clamp01(stats.probR[GSEA_P2R_INDEX]);
+   out.pfScore          = (w.pfRangeAboveOne>0.0)? Clamp01((stats.profitFactor-1.0)/w.pfRangeAboveOne) : 0.0;
    out.drawdownScore    = (w.ddCap>0.0)? Clamp01(1.0-stats.maxDrawdownR/w.ddCap) : 0.0;
    out.stabilityScore   = Clamp01(walkForwardPassRate);
    out.complexityPenalty= def.depth*w.complexityPenaltyPerComponent;

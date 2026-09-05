@@ -65,7 +65,6 @@ void ComputeScenarioStats(const ScenarioOccurrence &occs[],const int total,const
       WilsonCI(levelHits[k],n,wilsonZ,lo,hiv);
       out.probR_ciLo[k]=lo; out.probR_ciHi[k]=hiv;
      }
-   ComputePerLevelStats(levelHits,n,out.expectancyAtLevel,out.profitFactorAtLevel);
 
    double sumWin=0.0, sumLoss=0.0; int cw=0, cl=0;
    for(int i=0;i<ArraySize(exitRs);i++)
@@ -78,7 +77,7 @@ void ComputeScenarioStats(const ScenarioOccurrence &occs[],const int total,const
    out.avgR     = ArrayMean(exitRs);
    out.medianR  = ArrayMedian(exitRs);
    out.expectancyR = out.avgR; // == P(win)*avgWin + P(loss)*avgLossR over this sample, i.e. the spec #15 formula
-   out.profitFactor = (sumLoss!=0.0)? (sumWin/MathAbs(sumLoss)) : ((sumWin>0.0)? GSEA_MAX_PF : 0.0);
+   out.profitFactor = (sumLoss!=0.0)? (sumWin/MathAbs(sumLoss)) : ((sumWin>0.0)? DBL_MAX : 0.0);
    out.maxDrawdownR = maxDD;
    out.maxWinStreak=maxWinStreak; out.maxLossStreak=maxLossStreak;
    out.avgMFE_R = (mfeCount>0)? sumMfe/mfeCount : 0.0;
