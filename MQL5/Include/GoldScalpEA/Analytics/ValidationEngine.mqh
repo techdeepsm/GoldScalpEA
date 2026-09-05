@@ -71,6 +71,7 @@ void ComputeScenarioStatsRange(const ScenarioOccurrence &occs[],const int total,
       double lo,hiv; WilsonCI(levelHits[k],n,wilsonZ,lo,hiv);
       out.probR_ciLo[k]=lo; out.probR_ciHi[k]=hiv;
      }
+   ComputePerLevelStats(levelHits,n,out.expectancyAtLevel,out.profitFactorAtLevel);
    double sumWin=0.0,sumLoss=0.0; int cw=0,cl=0;
    for(int i=0;i<ArraySize(exitRs);i++){ if(exitRs[i]>0.0){ sumWin+=exitRs[i]; cw++; } else { sumLoss+=exitRs[i]; cl++; } }
    out.avgWinR=(cw>0)? sumWin/cw : 0.0;
@@ -78,7 +79,7 @@ void ComputeScenarioStatsRange(const ScenarioOccurrence &occs[],const int total,
    out.avgR=ArrayMean(exitRs);
    out.medianR=ArrayMedian(exitRs);
    out.expectancyR=out.avgR;
-   out.profitFactor=(sumLoss!=0.0)? (sumWin/MathAbs(sumLoss)) : ((sumWin>0.0)? DBL_MAX : 0.0);
+   out.profitFactor=(sumLoss!=0.0)? (sumWin/MathAbs(sumLoss)) : ((sumWin>0.0)? GSEA_MAX_PF : 0.0);
    out.avgMFE_R=(mfeCount>0)? sumMfe/mfeCount : 0.0;
    out.avgMAE_R=(mfeCount>0)? sumMae/mfeCount : 0.0;
    out.avgBarsToTarget=(barsToTargetCount>0)? sumBarsToTarget/barsToTargetCount : 0.0;
@@ -161,14 +162,24 @@ struct LifecycleThresholds
 
 // TRAIN and VALIDATION are the only inputs here - this function is what candidate generation and
 // parameter selection are allowed to react to (spec #30). OOS is deliberately a separate call.
+//
+// Gates on expectancyAtLevel[targetLevelIndex]/profitFactorAtLevel[targetLevelIndex], NOT the
+// aggregate expectancyR/profitFactor fields - the aggregate ones model running a trade to
+// whichever R level is reached first (stop or the far end), which is not what a live order with
+// its take-profit fixed at targetLevelIndex will actually realize. targetLevelIndex should match
+// whatever InpLiveTargetLevelIndex live execution is configured to use, so "VALIDATED" means
+// "validated at the R level this EA will actually trade."
 ENUM_SCENARIO_STATUS EvaluateLifecycleTrainValidation(const ScenarioStats &train,const ScenarioStats &validation,
-                                                       const LifecycleThresholds &th)
+                                                       const int targetLevelIndex,const LifecycleThresholds &th)
   {
+   if(targetLevelIndex<0 || targetLevelIndex>=GSEA_R_LEVELS) return STATUS_REJECTED;
    if(!train.sufficientSample) return STATUS_INSUFFICIENT_DATA;
-   if(train.expectancyR<=th.minExpectancy || train.profitFactor<th.minProfitFactor) return STATUS_REJECTED;
+   double trainExp=train.expectancyAtLevel[targetLevelIndex], trainPF=train.profitFactorAtLevel[targetLevelIndex];
+   if(trainExp<=th.minExpectancy || trainPF<th.minProfitFactor) return STATUS_REJECTED;
    if(!validation.sufficientSample) return STATUS_PROMISING;
-   if(validation.expectancyR<=th.minExpectancy) return STATUS_REJECTED;
-   if(validation.expectancyR < train.expectancyR*th.validationRetentionRatio) return STATUS_REJECTED;
+   double validExp=validation.expectancyAtLevel[targetLevelIndex];
+   if(validExp<=th.minExpectancy) return STATUS_REJECTED;
+   if(validExp < trainExp*th.validationRetentionRatio) return STATUS_REJECTED;
    return STATUS_VALIDATING;
   }
 
@@ -176,23 +187,32 @@ ENUM_SCENARIO_STATUS EvaluateLifecycleTrainValidation(const ScenarioStats &train
 // (VALIDATED or REJECTED) is terminal for this evaluation cycle and must not be used to go back
 // and tweak the scenario's definition.
 ENUM_SCENARIO_STATUS EvaluateLifecycleOOS(const ENUM_SCENARIO_STATUS currentStatus,const ScenarioStats &oos,
-                                           const double walkForwardPassRate,const LifecycleThresholds &th)
+                                           const int targetLevelIndex,const double walkForwardPassRate,
+                                           const LifecycleThresholds &th)
   {
    if(currentStatus!=STATUS_VALIDATING) return currentStatus;
+   if(targetLevelIndex<0 || targetLevelIndex>=GSEA_R_LEVELS) return STATUS_REJECTED;
    if(!oos.sufficientSample) return STATUS_VALIDATING;
    if(walkForwardPassRate<th.minWalkForwardPassRate) return STATUS_REJECTED;
-   if(oos.expectancyR<=th.minExpectancy || oos.profitFactor<th.minProfitFactor) return STATUS_REJECTED;
+   if(oos.expectancyAtLevel[targetLevelIndex]<=th.minExpectancy || oos.profitFactorAtLevel[targetLevelIndex]<th.minProfitFactor)
+      return STATUS_REJECTED;
    return STATUS_VALIDATED;
   }
 
 // Spec #37: monitor a LIVE scenario's rolling performance against its validated baseline. Never
 // retires on a handful of losses - both checks require the rolling sample to already be sizeable.
+// rollingLive.expectancyR here is expected to be built directly from real ExecutedTrade.rMultiple
+// values (a real trade always closes at its actual SL or actual TP), which is already an honest
+// single-fixed-TP number - so it's compared against validatedBaseline's PER-LEVEL expectancy
+// (same targetLevelIndex the live trades were actually opened with), not the aggregate field.
 bool CheckDecay(const ScenarioStats &validatedBaseline,const ScenarioStats &rollingLive,
-                 const LifecycleThresholds &th,bool &shouldDegrade,bool &shouldRetire)
+                 const int targetLevelIndex,const LifecycleThresholds &th,bool &shouldDegrade,bool &shouldRetire)
   {
    shouldDegrade=false; shouldRetire=false;
+   if(targetLevelIndex<0 || targetLevelIndex>=GSEA_R_LEVELS) return false;
    if(!rollingLive.sufficientSample) return false;
-   if(rollingLive.expectancyR < validatedBaseline.expectancyR*th.degradeExpectancyRatio) shouldDegrade=true;
+   double baselineExp=validatedBaseline.expectancyAtLevel[targetLevelIndex];
+   if(rollingLive.expectancyR < baselineExp*th.degradeExpectancyRatio) shouldDegrade=true;
    if(rollingLive.expectancyR <= th.retireExpectancy) shouldRetire=true;
    return true;
   }

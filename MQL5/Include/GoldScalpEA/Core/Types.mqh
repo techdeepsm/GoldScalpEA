@@ -338,8 +338,12 @@ struct ScenarioStats
    double   probR_ciHi[GSEA_R_LEVELS]; // Wilson 95% CI upper
    double   avgWinR, avgLossR;
    double   avgR, medianR;
-   double   expectancyR;
-   double   profitFactor;
+   double   expectancyR;       // "run to whichever R level is reached first, stop or the far end" - NOT
+   double   profitFactor;      // a single fixed-TP outcome. See expectancyAtLevel/profitFactorAtLevel
+                                // for the number that actually corresponds to a live order with its
+                                // take-profit fixed at one specific R level (e.g. InpLiveTargetLevelIndex).
+   double   expectancyAtLevel[GSEA_R_LEVELS];    // P(level)*level - (1-P(level))*1, per R level
+   double   profitFactorAtLevel[GSEA_R_LEVELS];  // gross win / gross loss if TP were fixed at that level
    double   maxDrawdownR;
    int      maxWinStreak, maxLossStreak;
    double   avgMFE_R, avgMAE_R;

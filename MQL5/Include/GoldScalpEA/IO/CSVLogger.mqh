@@ -64,9 +64,14 @@ bool CSV_WriteSummary(const string filename,const ScenarioStats &stats[],const i
   {
    int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,',');
    if(h==INVALID_HANDLE) return false;
+   // expectancy_r/profit_factor here model running each trade to whichever R level is reached
+   // first (the stop, or the far end) - NOT a single fixed take-profit. For the number that
+   // corresponds to a real order with its TP fixed at one R level, see
+   // <prefix>scenario_probability.csv's expectancy_r_if_tp_here / profit_factor_if_tp_here columns.
    FileWrite(h,"scenario_id","dataset","occurrences","wins","losses","win_rate_pct",
              "p_0_5R_pct","p_1R_pct","p_1_5R_pct","p_2R_pct","p_2_5R_pct","p_3R_pct","p_4R_pct",
-             "avg_win_r","avg_loss_r","avg_r","median_r","expectancy_r","profit_factor","max_drawdown_r",
+             "avg_win_r","avg_loss_r","avg_r_run_to_completion","median_r","expectancy_r_run_to_completion",
+             "profit_factor_run_to_completion","max_drawdown_r",
              "max_win_streak","max_loss_streak","avg_mfe_r","avg_mae_r","avg_bars_to_target","status","sufficient_sample");
    for(int i=0;i<count;i++) CSV_WriteStatsRow(h,stats[i]);
    FileClose(h);
@@ -77,12 +82,14 @@ bool CSV_WriteProbability(const string filename,const ScenarioStats &stats[],con
   {
    int h=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,',');
    if(h==INVALID_HANDLE) return false;
-   FileWrite(h,"scenario_id","dataset","r_multiple","sample","probability_pct","ci_low_pct","ci_high_pct");
+   FileWrite(h,"scenario_id","dataset","r_multiple","sample","probability_pct","ci_low_pct","ci_high_pct",
+             "expectancy_r_if_tp_here","profit_factor_if_tp_here");
    for(int i=0;i<count;i++)
       for(int k=0;k<GSEA_R_LEVELS;k++)
          FileWrite(h,stats[i].scenarioId,DatasetToString(stats[i].dataset),DoubleToString(GSEA_R_MULTIPLES[k],1),
                    stats[i].occurrences,DoubleToString(stats[i].probR[k]*100.0,2),
-                   DoubleToString(stats[i].probR_ciLo[k]*100.0,2),DoubleToString(stats[i].probR_ciHi[k]*100.0,2));
+                   DoubleToString(stats[i].probR_ciLo[k]*100.0,2),DoubleToString(stats[i].probR_ciHi[k]*100.0,2),
+                   DoubleToString(stats[i].expectancyAtLevel[k],3),DoubleToString(stats[i].profitFactorAtLevel[k],3));
    FileClose(h);
    return true;
   }

@@ -36,8 +36,10 @@ bool IsEligibleForLive(const ScenarioDef &def,const ScenarioStats &stats,const L
    if(stats.occurrences<cfg.minSampleSize){ reasonOut="sample below minimum"; return false; }
    if(cfg.targetLevelIndex<0 || cfg.targetLevelIndex>=GSEA_R_LEVELS){ reasonOut="bad target level index"; return false; }
    if(stats.probR[cfg.targetLevelIndex]<cfg.minProbAtTarget){ reasonOut="probability below threshold"; return false; }
-   if(stats.expectancyR<=cfg.minExpectancy){ reasonOut="expectancy below threshold"; return false; }
-   if(stats.profitFactor<cfg.minProfitFactor){ reasonOut="profit factor below threshold"; return false; }
+   // Gated on the SAME R level this trade will actually be closed at (a real order has one TP),
+   // not the aggregate "run to the highest level reached" fields - see Types.mqh ScenarioStats.
+   if(stats.expectancyAtLevel[cfg.targetLevelIndex]<=cfg.minExpectancy){ reasonOut="expectancy below threshold"; return false; }
+   if(stats.profitFactorAtLevel[cfg.targetLevelIndex]<cfg.minProfitFactor){ reasonOut="profit factor below threshold"; return false; }
    if(stats.maxDrawdownR>cfg.maxDrawdownR){ reasonOut="drawdown above threshold"; return false; }
    if(currentSpreadPts>cfg.maxSpreadPoints){ reasonOut="spread above threshold"; return false; }
    return true;

@@ -28,21 +28,25 @@ struct ConfluenceComparison
    bool   overallImproved;      // transparent rule: expectancy AND P(2R) both improve on a sufficient sample
   };
 
+// targetLevelIndex should match InpLiveTargetLevelIndex, so "does this improve the parent" is
+// judged at the R level this EA would actually trade, using expectancyAtLevel/profitFactorAtLevel
+// rather than the aggregate "run to whichever level is reached first" fields.
 void CompareConfluence(const ScenarioStats &parentStats,const ScenarioStats &childStats,
-                        const int minSampleSize,ConfluenceComparison &out)
+                        const int minSampleSize,const int targetLevelIndex,ConfluenceComparison &out)
   {
    ZeroMemory(out);
+   int lvl = (targetLevelIndex>=0 && targetLevelIndex<GSEA_R_LEVELS)? targetLevelIndex : GSEA_P2R_INDEX;
    out.parentId=parentStats.scenarioId; out.childId=childStats.scenarioId;
    out.parentSample=parentStats.occurrences; out.childSample=childStats.occurrences;
    out.parentP1R=parentStats.probR[GSEA_WIN_LEVEL_INDEX]; out.childP1R=childStats.probR[GSEA_WIN_LEVEL_INDEX];
    out.parentP2R=parentStats.probR[GSEA_P2R_INDEX];       out.childP2R=childStats.probR[GSEA_P2R_INDEX];
-   out.parentExpectancy=parentStats.expectancyR; out.childExpectancy=childStats.expectancyR;
-   out.parentPF=parentStats.profitFactor; out.childPF=childStats.profitFactor;
+   out.parentExpectancy=parentStats.expectancyAtLevel[lvl]; out.childExpectancy=childStats.expectancyAtLevel[lvl];
+   out.parentPF=parentStats.profitFactorAtLevel[lvl]; out.childPF=childStats.profitFactorAtLevel[lvl];
 
    out.childSampleSufficient = (childStats.occurrences>=minSampleSize);
    out.improvesP2R          = out.childSampleSufficient && (childStats.probR[GSEA_P2R_INDEX] > parentStats.probR[GSEA_P2R_INDEX]);
-   out.improvesExpectancy   = out.childSampleSufficient && (childStats.expectancyR > parentStats.expectancyR);
-   out.improvesProfitFactor = out.childSampleSufficient && (childStats.profitFactor > parentStats.profitFactor);
+   out.improvesExpectancy   = out.childSampleSufficient && (out.childExpectancy > out.parentExpectancy);
+   out.improvesProfitFactor = out.childSampleSufficient && (out.childPF > out.parentPF);
    out.overallImproved      = out.improvesExpectancy && out.improvesP2R;
   }
 

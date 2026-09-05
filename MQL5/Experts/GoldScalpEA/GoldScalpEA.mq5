@@ -341,7 +341,7 @@ void EvaluateLifecycleForAll()
       ScenarioStats trainSt,validSt;
       ComputeScenarioStats(g_occurrences,total,def.id,DATASET_TRAIN,InpMinSampleSize,InpWilsonZ,trainSt);
       ComputeScenarioStats(g_occurrences,total,def.id,DATASET_VALIDATION,InpMinSampleSize,InpWilsonZ,validSt);
-      ENUM_SCENARIO_STATUS newStatus=EvaluateLifecycleTrainValidation(trainSt,validSt,th);
+      ENUM_SCENARIO_STATUS newStatus=EvaluateLifecycleTrainValidation(trainSt,validSt,InpLiveTargetLevelIndex,th);
       g_registry.SetStatus(def.id,newStatus);
      }
   }
@@ -385,7 +385,7 @@ void FinalizeOOSAndWalkForward()
         }
       if(def.status==STATUS_VALIDATING)
         {
-         ENUM_SCENARIO_STATUS newStatus=EvaluateLifecycleOOS(def.status,oosSt,passRate,th);
+         ENUM_SCENARIO_STATUS newStatus=EvaluateLifecycleOOS(def.status,oosSt,InpLiveTargetLevelIndex,passRate,th);
          g_registry.SetStatus(def.id,newStatus);
         }
       int n=ArraySize(g_cacheIds);
@@ -405,7 +405,7 @@ void BuildRankingTableGlobal()
       ScenarioStats st; double wf;
       if(!GetCachedStats(def.id,st,wf)){ ZeroMemory(st); wf=0.0; }
       RankingResult r;
-      RankScenario(def,st,wf,w,r);
+      RankScenario(def,st,InpLiveTargetLevelIndex,wf,w,r);
       g_rankResults[i]=r;
      }
    SortRankingResultsDesc(g_rankResults,cnt);
@@ -488,8 +488,9 @@ void RunStressTestForValidated()
         }
       ScenarioStats stressedStats; ComputeScenarioStats(stressed,m,def.id,DATASET_OOS,1,InpWilsonZ,stressedStats);
       ScenarioStats baseline; double wf; GetCachedStats(def.id,baseline,wf);
-      PrintFormat("GoldScalpEA STRESS %s: baseline OOS expectancy=%.3fR (n=%d) -> 2x-spread expectancy=%.3fR (n=%d)",
-                  def.id,baseline.expectancyR,baseline.occurrences,stressedStats.expectancyR,m);
+      PrintFormat("GoldScalpEA STRESS %s: baseline OOS expectancy@%.1fR=%.3fR (n=%d) -> 2x-spread expectancy@%.1fR=%.3fR (n=%d)",
+                  def.id,GSEA_R_MULTIPLES[InpLiveTargetLevelIndex],baseline.expectancyAtLevel[InpLiveTargetLevelIndex],baseline.occurrences,
+                  GSEA_R_MULTIPLES[InpLiveTargetLevelIndex],stressedStats.expectancyAtLevel[InpLiveTargetLevelIndex],m);
      }
   }
 
@@ -582,7 +583,7 @@ void ExportAllCSVs()
             if(GetCachedStats(parentDef.id,parentOos,pwf))
               {
                ConfluenceComparison cc;
-               CompareConfluence(parentOos,oosSt,InpMinSampleSize,cc);
+               CompareConfluence(parentOos,oosSt,InpMinSampleSize,InpLiveTargetLevelIndex,cc);
                int n2=ArraySize(confRows); ArrayResize(confRows,n2+1); confRows[n2]=cc;
               }
            }
@@ -711,7 +712,7 @@ void CheckAllScenarioDecay()
       if(!GetCachedStats(def.id,baseline,wf)) continue;
 
       bool degrade,retire;
-      if(CheckDecay(baseline,rolling,th,degrade,retire))
+      if(CheckDecay(baseline,rolling,InpLiveTargetLevelIndex,th,degrade,retire))
         {
          if(retire) g_registry.SetStatus(def.id,STATUS_RETIRED);
          else if(degrade) g_registry.SetStatus(def.id,STATUS_DEGRADED);
@@ -741,7 +742,7 @@ void UpdateDashboardLive(const bool haveActive,const ScenarioOccurrence &activeO
                     haveActive?activeOcc.entryPrice:0.0,haveActive?activeOcc.slPrice:0.0,
                     haveActive?activeOcc.tpLevels[InpLiveTargetLevelIndex]:0.0,
                     activeStats.occurrences,activeStats.probR[1],activeStats.probR[3],activeStats.probR[5],
-                    activeStats.expectancyR,activeStats.profitFactor,
+                    activeStats.expectancyAtLevel[InpLiveTargetLevelIndex],activeStats.profitFactorAtLevel[InpLiveTargetLevelIndex],
                     g_risk.DailyPL(),0.0,openPos,0.0,g_risk.ConsecutiveLosses(),InpMode);
   }
 
@@ -831,7 +832,7 @@ void OnTick()
          g_registry.Get(newOcc[i].scenarioId,defs[i]);
          double wf=0.0;
          if(!GetCachedStats(newOcc[i].scenarioId,stats[i],wf)) ZeroMemory(stats[i]);
-         RankScenario(defs[i],stats[i],wf,rw,ranks[i]);
+         RankScenario(defs[i],stats[i],InpLiveTargetLevelIndex,wf,rw,ranks[i]);
         }
       LiveEligibilityConfig ecfg=BuildLiveEligibilityConfig();
       string reasons[];

@@ -135,4 +135,25 @@ string DatasetToString(const ENUM_DATASET d)
 
 double GSEA_R_MULTIPLES[GSEA_R_LEVELS] = {0.5,1.0,1.5,2.0,2.5,3.0,4.0};
 
+#define GSEA_MAX_PF 999.0 // sane cap for "no losing trades yet" instead of a raw DBL_MAX literal
+
+// Per-R-level expectancy/profit-factor, derived straight from level-hit counts. A "win at level k"
+// always means the trade reached exactly +GSEA_R_MULTIPLES[k]; a "loss" always means the stop was
+// hit first, i.e. exactly -1R (the SL distance IS the definition of 1R) - so both are known
+// constants and this needs no extra scanning beyond the level-hit counts ComputeScenarioStats(Range)
+// already has. This is what a live order with its take-profit fixed at level k would have realized -
+// unlike the aggregate expectancyR/profitFactor fields, which model running to the highest level
+// reached (or the stop) with no partial exit.
+void ComputePerLevelStats(const int &levelHits[],const int n,double &expectancyOut[],double &pfOut[])
+  {
+   for(int k=0;k<GSEA_R_LEVELS;k++)
+     {
+      double p = (n>0)? (double)levelHits[k]/n : 0.0;
+      expectancyOut[k] = p*GSEA_R_MULTIPLES[k] - (1.0-p)*1.0;
+      double sumWinK  = (double)levelHits[k]*GSEA_R_MULTIPLES[k];
+      double sumLossK = (double)(n-levelHits[k])*1.0;
+      pfOut[k] = (sumLossK>0.0)? (sumWinK/sumLossK) : ((sumWinK>0.0)? GSEA_MAX_PF : 0.0);
+     }
+  }
+
 #endif // __GSEA_UTILS_MQH__
