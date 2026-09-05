@@ -535,8 +535,18 @@ void RunFullPipeline()
    if(InpEnableMonteCarloLikeStress) RunStressTestForValidated();
 
    if(InpExportCSV) ExportAllCSVs();
+   else Print("GoldScalpEA: InpExportCSV is false - CSVs were not written this run");
    PrintDiscoveryReport();
    g_lastFullResearchRun=TimeCurrent();
+  }
+
+bool LogCsvResult(const string filename,const bool wroteOk)
+  {
+   if(wroteOk)
+      PrintFormat("GoldScalpEA: wrote %s%s",InpFilePrefix,filename);
+   else
+      PrintFormat("GoldScalpEA: FAILED to write %s%s (GetLastError=%d)",InpFilePrefix,filename,GetLastError());
+   return wroteOk;
   }
 
 void ExportAllCSVs()
@@ -580,11 +590,15 @@ void ExportAllCSVs()
      }
 
    string prefix=InpFilePrefix;
-   CSV_WriteOccurrences(prefix+"scenario_occurrences.csv",g_occurrences,total);
-   CSV_WriteSummary(prefix+"scenario_summary.csv",allForSummary,ArraySize(allForSummary));
-   CSV_WriteProbability(prefix+"scenario_probability.csv",allForSummary,ArraySize(allForSummary));
-   CSV_WriteConfluence(prefix+"scenario_confluence.csv",confRows,ArraySize(confRows));
-   CSV_WriteValidation(prefix+"scenario_validation.csv",ids,statuses,trainAll,validAll,oosAll,wfRates,cnt);
+   bool ok=true;
+   ok &= LogCsvResult("scenario_occurrences.csv",CSV_WriteOccurrences(prefix+"scenario_occurrences.csv",g_occurrences,total));
+   ok &= LogCsvResult("scenario_summary.csv",CSV_WriteSummary(prefix+"scenario_summary.csv",allForSummary,ArraySize(allForSummary)));
+   ok &= LogCsvResult("scenario_probability.csv",CSV_WriteProbability(prefix+"scenario_probability.csv",allForSummary,ArraySize(allForSummary)));
+   ok &= LogCsvResult("scenario_confluence.csv",CSV_WriteConfluence(prefix+"scenario_confluence.csv",confRows,ArraySize(confRows)));
+   ok &= LogCsvResult("scenario_validation.csv",CSV_WriteValidation(prefix+"scenario_validation.csv",ids,statuses,trainAll,validAll,oosAll,wfRates,cnt));
+   if(ok)
+      PrintFormat("GoldScalpEA: all CSVs written with prefix '%s' to the Common Files folder "
+                  "(Windows: %%APPDATA%%\\MetaQuotes\\Terminal\\Common\\Files\\)",prefix);
   }
 
 void PrintDiscoveryReport()
